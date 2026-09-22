@@ -61,13 +61,13 @@ npm run generate-data  # rebuilds the CSVs in data/ (same seed, same output)
 
 ```
 timestamp,open,high,low,close,volume
-2026-09-01T09:15:00+05:30,2092.30,2092.30,2076.20,2079.00,447854
+2026-09-15T09:15:00+05:30,2092.30,2092.30,2076.20,2079.00,447854
 ```
 
-- **Window:** 1 to 21 Sep 2026, which is 14 trading days. Weekends are skipped and so is Mon 14 Sep (Ganesh Chaturthi, an NSE holiday). Janmashtami on 4 Sep isn't on the 2026 exchange holiday list, so that day trades.
+- **Window:** it starts on 14 Sep 2026 and runs for the next 14 trading days, which lands on 15 Sep to 5 Oct. Three kinds of day are missing from it: weekends, Mon 14 Sep (Ganesh Chaturthi) and Fri 2 Oct (Gandhi Jayanti), both NSE holidays. That gap in the middle is worth showing in a demo, since the app has to price and label a closed day correctly.
 - **Candles follow NSE's session:** 09:15 to 15:30 IST, so a day has 13 candles (09:15, 09:45 ... 15:15). The last one is only 15 minutes long, same as on Kite.
 - **Size:** 10 stocks x 14 days x 13 candles = 1,820 rows.
-- **Prices start near real late-August 2026 levels** (RELIANCE ~₹1,240, TCS ~₹2,110 and so on) but everything after that is synthetic.
+- **Prices start near real early-September 2026 levels** (RELIANCE ~₹1,240, TCS ~₹2,110 and so on) but everything after that is synthetic.
 
 The brief suggested generating the data with ChatGPT. I wrote a small generator instead (`scripts/generate-data.ts`), mainly so the numbers are reproducible and actually behave like a market:
 
@@ -75,7 +75,7 @@ The brief suggested generating the data with ChatGPT. I wrote a small generator 
 - Days open with an overnight gap. Volatility and volume are higher at the open and close than at lunch (the usual U shape).
 - High and low come from a simulated path inside each candle, so every candle is internally consistent.
 - Prices sit on NSE's tick grid (₹0.01 under ₹250, ₹0.05 up to ₹1,000, ₹0.10 up to ₹5,000).
-- There are three scripted news days, so the replay has moments worth trading around: Bharti Airtel gaps up on 8 Sep, TCS and Infosys gap down on 10 Sep, SBI gaps up on 17 Sep.
+- There are three scripted news days, so the replay has moments worth trading around: Bharti Airtel gaps up on 18 Sep, TCS and Infosys gap down on 22 Sep, SBI gaps up on 30 Sep.
 - The seed is fixed, so rerunning it gives byte-identical files.
 
 On startup the server loads the CSVs into SQLite (the `stocks` and `candles` tables), which makes the CSVs the source of truth. Orders and trades live in the same database file under `var/`.
@@ -97,9 +97,9 @@ On startup the server loads the CSVs into SQLite (the `stocks` and `candles` tab
 Real brokers and the tax department use FIFO lot matching instead of a running average. For a paper-trading app I think average cost is easier to read, but it's worth knowing the difference.
 
 **Moving through time.** This part needed a rule, since the brief asks for prices at any selected time and you can also trade.
-- Everything you see is *as of* the clock. Jump back to 5 Sep after trading on the 17th and the holdings, cash and history show exactly what you had on the 5th. Later trades show as faded dots on the tape.
+- Everything you see is *as of* the clock. Jump back to 17 Sep after trading on 1 Oct and the holdings, cash and history show exactly what you had on the 17th. Later trades show as faded dots on the tape.
 - Trading only moves forward. You can't place an order earlier than the latest activity on your ledger, otherwise you could sell on day 3 shares you'd already sold on day 8. The ticket explains this and offers a jump back to your latest trade. Reset the account if you want to start over.
-- Looking ahead is free. If you have a limit order waiting and scrub past the moment it would fill, you'll see it filled, but nothing is saved until you actually trade at or after that time. So you can peek at day 10 and still come back and trade on day 4.
+- Looking ahead is free. If you have a limit order waiting and scrub past the moment it would fill, you'll see it filled, but nothing is saved until you actually trade at or after that time. So you can peek at 1 Oct and still come back and trade on 17 Sep.
 
 ## API
 
