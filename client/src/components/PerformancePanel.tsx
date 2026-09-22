@@ -14,8 +14,8 @@ export function PerformancePanel({ performance, portfolio }: { performance: Perf
   useEffect(() => {
     const c = createChart(box.current!, {
       autoSize: true,
-      layout: { background: { type: ColorType.Solid, color: css("--color-panel") }, textColor: css("--color-muted"), fontFamily: "IBM Plex Sans", fontSize: 11, attributionLogo: false },
-      grid: { vertLines: { visible: false }, horzLines: { color: "rgba(42,57,87,0.35)" } },
+      layout: { background: { type: ColorType.Solid, color: css("--color-panel") }, textColor: css("--color-muted"), fontFamily: "Barlow", fontSize: 11, attributionLogo: false },
+      grid: { vertLines: { visible: false }, horzLines: { color: "rgba(242,239,228,0.07)" } },
       rightPriceScale: { borderColor: css("--color-line") },
       timeScale: { borderColor: css("--color-line"), timeVisible: true },
       localization: { priceFormatter: (p: number) => `₹${(p / 100000).toFixed(2)}L` },
@@ -23,7 +23,7 @@ export function PerformancePanel({ performance, portfolio }: { performance: Perf
       handleScale: false,
     });
     index.current = c.addSeries(LineSeries, { color: css("--color-muted"), lineWidth: 1, lineStyle: LineStyle.Dashed, title: "Market", priceLineVisible: false });
-    mine.current = c.addSeries(LineSeries, { color: css("--color-flame"), lineWidth: 2, title: "You", priceLineVisible: false });
+    mine.current = c.addSeries(LineSeries, { color: css("--color-chalk"), lineWidth: 2, title: "You", priceLineVisible: false });
     chart.current = c;
     return () => { c.remove(); chart.current = null; };
   }, []);
@@ -60,15 +60,15 @@ export function PerformancePanel({ performance, portfolio }: { performance: Perf
           <Stat k="Max drawdown" v={pct(-s.maxDrawdownPct)} cls={s.maxDrawdownPct > 0 ? "down" : ""} />
           <Stat k="Trades" v={String(s.tradeCount)} />
           <Stat k="Win rate" v={s.winRatePct === null ? "–" : `${s.winRatePct.toFixed(0)}% of ${s.closedTrades}`} />
-          <Stat k="Best sell" v={s.bestTrade ? `${s.bestTrade.symbol} ${inr(s.bestTrade.pnl, { sign: true })}` : "–"} cls={tone(s.bestTrade?.pnl ?? null)} title={s.bestTrade ? when(s.bestTrade.simTime) : undefined} />
-          <Stat k="Worst sell" v={s.worstTrade ? `${s.worstTrade.symbol} ${inr(s.worstTrade.pnl, { sign: true })}` : "–"} cls={tone(s.worstTrade?.pnl ?? null)} title={s.worstTrade ? when(s.worstTrade.simTime) : undefined} />
+          <Stat k="Best sell" v={s.bestTrade ? `${s.bestTrade.symbol} ${inr(s.bestTrade.pnl, { sign: true, compact: true })}` : "–"} cls={tone(s.bestTrade?.pnl ?? null)} title={s.bestTrade ? `${inr(s.bestTrade.pnl, { sign: true })} on ${when(s.bestTrade.simTime)}` : undefined} />
+          <Stat k="Worst sell" v={s.worstTrade ? `${s.worstTrade.symbol} ${inr(s.worstTrade.pnl, { sign: true, compact: true })}` : "–"} cls={tone(s.worstTrade?.pnl ?? null)} title={s.worstTrade ? `${inr(s.worstTrade.pnl, { sign: true })} on ${when(s.worstTrade.simTime)}` : undefined} />
           <Stat k="Charges paid" v={inr(s.totalCharges)} />
           <Stat k="Started with" v={inr(portfolio.account.startingCash, { compact: true })} />
         </dl>
       </div>
       <div className="relative min-h-[220px]">
         <div className="absolute left-4 top-2 z-10 flex gap-4 text-[11px] text-muted">
-          <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 bg-flame" />You (cash + holdings)</span>
+          <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 bg-chalk" />You (cash + holdings)</span>
           <span className="flex items-center gap-1.5"><span className="h-0 w-4 border-t border-dashed border-muted" />Market, same starting cash</span>
         </div>
         <div ref={box} className="absolute inset-0 top-7" role="img" aria-label="Net worth over time against the equal-weight market basket" />

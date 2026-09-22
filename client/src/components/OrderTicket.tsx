@@ -127,7 +127,7 @@ export function OrderTicket(p: Props) {
           <div className="text-[12px] text-muted num">LTP ₹{price(q.ltp)}</div>
         </div>
 
-        <div className="flex overflow-hidden rounded-md border border-line" role="radiogroup" aria-label="Order type">
+        <div className="flex overflow-hidden rounded-[2px] border border-line" role="radiogroup" aria-label="Order type">
           {(["MARKET", "LIMIT"] as const).map((t) => (
             <button
               type="button" key={t} role="radio" aria-checked={type === t}
@@ -144,13 +144,13 @@ export function OrderTicket(p: Props) {
             <span className="flex justify-between text-[11px] text-muted">
               Quantity
               <button
-                type="button" className="text-flame hover:underline"
+                type="button" className="text-chalk hover:underline"
                 onClick={() => setQty(String(side === "BUY" ? maxBuy : Math.max(0, freeQty)))}
               >Max</button>
             </span>
             <input
               ref={qtyRef} inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value.replace(/[^\d]/g, ""))}
-              className="h-9 rounded-md border border-line bg-raised px-2.5 text-[14px] num"
+              className="h-9 rounded-[2px] border border-line bg-raised px-2.5 text-[14px] num"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -160,7 +160,7 @@ export function OrderTicket(p: Props) {
               disabled={type === "MARKET"}
               value={type === "MARKET" ? "At market" : limit}
               onChange={(e) => setLimit(e.target.value.replace(/[^\d.]/g, ""))}
-              className="h-9 rounded-md border border-line bg-raised px-2.5 text-[14px] num disabled:text-muted"
+              className="h-9 rounded-[2px] border border-line bg-raised px-2.5 text-[14px] num disabled:text-muted"
             />
           </label>
         </div>
@@ -178,17 +178,17 @@ export function OrderTicket(p: Props) {
           <textarea
             rows={2} maxLength={280} value={note} onChange={(e) => setNote(e.target.value)}
             placeholder="e.g. Buying the gap down after the IT guidance news"
-            className="resize-none rounded-md border border-line bg-raised px-2.5 py-1.5 text-[12px] placeholder:text-faint"
+            className="resize-none rounded-[2px] border border-line bg-raised px-2.5 py-1.5 text-[12px] placeholder:text-faint"
           />
         </label>
 
-        <dl className="flex flex-col gap-1.5 rounded-md border border-line p-3 text-[12px] num">
+        <dl className="flex flex-col gap-1.5 rounded-[2px] border border-line p-3 text-[12px] num">
           <Row k={`Price (${type === "MARKET" || fillsNow ? `${q.candleTs ? epochToIst(q.candleTs).time : "prev"} candle` : "limit"})`} v={`₹${price(px)}`} />
           <Row k="Order value" v={inr(value)} />
           <div className="flex justify-between">
             <dt className="text-muted">
               Charges{" "}
-              {charges && <button type="button" className="text-flame hover:underline" onClick={() => setShowCharges((x) => !x)}>{showCharges ? "hide" : "details"}</button>}
+              {charges && <button type="button" className="text-chalk hover:underline" onClick={() => setShowCharges((x) => !x)}>{showCharges ? "hide" : "details"}</button>}
             </dt>
             <dd>{charges ? inr(charges.total) : "Off"}</dd>
           </div>
@@ -211,10 +211,10 @@ export function OrderTicket(p: Props) {
         </dl>
 
         {blocker ? (
-          <div className="rounded-md border border-line bg-raised p-3 text-[12px] leading-snug">
+          <div className="rounded-[2px] border border-line bg-raised p-3 text-[12px] leading-snug">
             <p className="text-muted">{blocker.text}</p>
             {blocker.action && (
-              <button type="button" onClick={() => p.onJumpTo(blocker.action!.ts)} className="mt-2 font-medium text-flame hover:underline">
+              <button type="button" onClick={() => p.onJumpTo(blocker.action!.ts)} className="mt-2 font-medium text-chalk hover:underline">
                 {blocker.action.label}
               </button>
             )}
@@ -225,7 +225,7 @@ export function OrderTicket(p: Props) {
             <button
               type="submit"
               disabled={!!problem || busy}
-              className={`h-10 rounded-md font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45 ${accent === "buy" ? "bg-buy" : "bg-sell"}`}
+              className={`h-10 rounded-[2px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45 ${accent === "buy" ? "bg-buy" : "bg-sell"}`}
             >
               {busy ? "Placing…" : label}
             </button>

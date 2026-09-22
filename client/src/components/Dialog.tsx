@@ -14,7 +14,7 @@ export function Dialog({ title, onClose, children }: { title: string; onClose: (
 
   return (
     <div className="fixed inset-0 z-40 grid place-items-center bg-black/55 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div ref={ref} role="dialog" aria-modal="true" aria-label={title} className="w-full max-w-md rounded-lg border border-line bg-panel shadow-2xl shadow-black/40">
+      <div ref={ref} role="dialog" aria-modal="true" aria-label={title} className="w-full max-w-md rounded-[3px] border border-line bg-panel">
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
           <h2 className="text-[14px] font-semibold">{title}</h2>
           <button onClick={onClose} className="text-muted hover:text-text" aria-label="Close">×</button>

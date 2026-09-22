@@ -40,15 +40,15 @@ export function BottomPanel(p: Props) {
             aria-selected={p.tab === t.id}
             onClick={() => p.onTab(t.id)}
             title={`${t.label} (${t.key})`}
-            className={`relative h-9 shrink-0 px-3 text-[12.5px] font-medium ${p.tab === t.id ? "text-text" : "text-muted hover:text-text"}`}
+            className={`cond relative h-9 shrink-0 px-3 text-[14px] font-semibold uppercase ${p.tab === t.id ? "text-text" : "text-muted hover:text-text"}`}
           >
             {t.label}
             {t.count !== undefined && <span className="ml-1.5 rounded bg-raised px-1.5 text-[11px] text-muted num">{t.count}</span>}
-            {p.tab === t.id && <span className="absolute inset-x-2 bottom-0 h-0.5 bg-flame" />}
+            {p.tab === t.id && <span className="absolute inset-x-2 bottom-0 h-[3px] bg-chalk" />}
           </button>
         ))}
         {p.tab === "trades" && p.trades.length > 0 && (
-          <a href={api.csvUrl(p.at)} className="ml-auto shrink-0 rounded-md border border-line px-2.5 py-1 text-[12px] text-muted hover:text-text" download>
+          <a href={api.csvUrl(p.at)} className="ml-auto shrink-0 rounded-[2px] border border-line px-2.5 py-1 text-[12px] text-muted hover:text-text" download>
             Export CSV
           </a>
         )}
@@ -131,7 +131,7 @@ function Holdings({ portfolio, onSelect, onTrade }: Props) {
 }
 
 const STATUS_STYLE: Record<Order["status"], string> = {
-  OPEN: "text-flame",
+  OPEN: "text-chalk",
   FILLED: "text-up",
   CANCELLED: "text-muted",
   REJECTED: "text-down",

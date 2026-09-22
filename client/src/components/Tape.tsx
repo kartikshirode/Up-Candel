@@ -78,13 +78,14 @@ export function Tape({ meta, at, curve, trades, onSeek }: Props) {
       >
         {days.map((d, i) => {
           const l = dayLabel(d);
+          const newMonth = i === 0 || dayLabel(days[i - 1]).month !== l.month;
           const move = dayMoves[i];
           const tint = move === null ? "transparent"
             : `color-mix(in srgb, var(--color-${move >= 0 ? "up" : "down"}) ${Math.min(55, 12 + Math.abs(move) * 22)}%, transparent)`;
           return (
             <div key={d} className="relative flex-1 border-l border-line first:border-l-0" title={move === null ? `${l.weekday} ${l.day} ${l.month}` : `${l.weekday} ${l.day} ${l.month}: market ${pct(move)}`}>
-              <div className={`px-1.5 pt-0.5 text-[10.5px] leading-tight ${i < Math.floor(position) ? "text-muted" : i === Math.floor(position) ? "text-text" : "text-faint"}`}>
-                <span className="font-medium">{l.day}</span> <span className="hidden sm:inline">{l.weekday}</span>
+              <div className={`cond px-1.5 pt-0.5 text-[12px] uppercase leading-tight ${i < Math.floor(position) ? "text-muted" : i === Math.floor(position) ? "text-text" : "text-faint"}`}>
+                <span className="font-semibold">{l.day}</span> <span className="hidden sm:inline">{newMonth ? l.month : l.weekday}</span>
               </div>
               <div className="absolute inset-x-0 bottom-0 h-[5px]" style={{ background: tint }} />
               <div className="absolute inset-x-0 bottom-[5px] flex justify-between px-px">
@@ -94,7 +95,7 @@ export function Tape({ meta, at, curve, trades, onSeek }: Props) {
           );
         })}
 
-        <div className="pointer-events-none absolute inset-y-0 left-0 bg-flame/[0.06]" style={{ width: `${(position / n) * 100}%` }} />
+        <div className="pointer-events-none absolute inset-y-0 left-0 bg-chalk/[0.06]" style={{ width: `${(position / n) * 100}%` }} />
 
         {trades.map((t) => {
           const future = t.simTime > at;
@@ -108,8 +109,8 @@ export function Tape({ meta, at, curve, trades, onSeek }: Props) {
           );
         })}
 
-        <div className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-flame" style={{ left: `${(position / n) * 100}%` }}>
-          <span className="absolute -top-0.5 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-flame" />
+        <div className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-chalk" style={{ left: `${(position / n) * 100}%` }}>
+          <span className="absolute -top-0.5 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-chalk" />
         </div>
       </div>
     </div>

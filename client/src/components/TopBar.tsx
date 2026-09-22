@@ -18,22 +18,22 @@ interface Props {
   onOpenAccount: () => void;
 }
 
-const btn = "grid h-8 w-8 place-items-center rounded-md border border-line bg-raised text-text hover:border-muted disabled:opacity-40";
+const btn = "grid h-8 w-8 place-items-center rounded-[2px] border border-line bg-raised text-text hover:border-muted disabled:opacity-40";
 
 export function TopBar(p: Props) {
   const s = p.portfolio.summary;
-  const statusDot = p.status.isOpen ? "bg-up" : p.status.state === "PRE_OPEN" ? "bg-flame" : "bg-faint";
+  const statusDot = p.status.isOpen ? "bg-up" : p.status.state === "PRE_OPEN" ? "bg-chalk" : "bg-faint";
 
   return (
     <header className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-line bg-panel px-4 py-2.5">
       <div className="flex items-center gap-2.5">
         <img src="/favicon.svg" alt="" className="h-7 w-7" />
-        <div className="text-[15px] font-bold tracking-tight" title="Virtual money only. NSE market replay.">Up-Candel</div>
+        <div className="cond border-b-2 border-chalk pb-0.5 text-[19px] font-bold uppercase leading-none" title="Virtual money only. NSE market replay.">Up-Candel</div>
       </div>
 
       <div className="flex items-center gap-3">
         <div className="leading-tight">
-          <div className="font-mono text-[15px] text-flame num" aria-live="polite">{when(p.at, true)} <span className="text-muted">IST</span></div>
+          <div className="font-mono text-[15px] text-chalk num" aria-live="polite">{when(p.at, true)} <span className="text-muted">IST</span></div>
           <div className="flex items-center gap-1.5 text-[11px] text-muted">
             <span className={`inline-block h-1.5 w-1.5 rounded-full ${statusDot}`} />
             {p.status.label}
@@ -43,7 +43,7 @@ export function TopBar(p: Props) {
         <input
           id="clock"
           type="datetime-local"
-          className="h-8 rounded-md border border-line bg-raised px-2 text-[12px] num"
+          className="h-8 rounded-[2px] border border-line bg-raised px-2 text-[12px] num"
           value={toLocalInput(p.at)}
           min={toLocalInput(p.meta.range.start)}
           max={toLocalInput(p.meta.range.end)}
@@ -62,7 +62,7 @@ export function TopBar(p: Props) {
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h2v12H3zM14 2v12L6 8z" /></svg>
         </button>
         <button
-          className={`${btn} w-auto gap-1.5 px-3 ${p.playing ? "border-flame text-flame" : ""}`}
+          className={`${btn} w-auto gap-1.5 px-3 ${p.playing ? "border-chalk text-chalk" : ""}`}
           onClick={p.onTogglePlay}
           title="Play or pause the replay (Space)"
         >
@@ -74,14 +74,14 @@ export function TopBar(p: Props) {
         <button className={btn} onClick={() => p.onStep(1)} title="Forward one candle (→)" aria-label="Forward one candle">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2v12l8-6zM11 2h2v12h-2z" /></svg>
         </button>
-        <div className="ml-1 flex overflow-hidden rounded-md border border-line" role="radiogroup" aria-label="Replay speed">
+        <div className="ml-1 flex overflow-hidden rounded-[2px] border border-line" role="radiogroup" aria-label="Replay speed">
           {SPEEDS.map((sp) => (
             <button
               key={sp}
               role="radio"
               aria-checked={p.speed === sp}
               onClick={() => p.onSpeed(sp)}
-              className={`h-8 px-2 text-[12px] num ${p.speed === sp ? "bg-flame/15 text-flame" : "bg-raised text-muted hover:text-text"}`}
+              className={`h-8 px-2 text-[12px] num ${p.speed === sp ? "bg-chalk/15 text-chalk" : "bg-raised text-muted hover:text-text"}`}
             >
               {sp}×
             </button>
@@ -109,7 +109,7 @@ export function TopBar(p: Props) {
 function Stat({ label, value, sub, cls = "", hint }: { label: string; value: string; sub?: string; cls?: string; hint?: string }) {
   return (
     <div className="leading-tight" title={hint}>
-      <dt className="text-[11px] text-muted">{label}</dt>
+      <dt className="cond text-[11.5px] uppercase text-muted">{label}</dt>
       <dd className={`text-[14px] font-semibold num ${cls}`}>
         {value}
         {sub && <span className="ml-1 text-[11px] font-medium">{sub}</span>}

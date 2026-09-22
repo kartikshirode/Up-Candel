@@ -32,7 +32,7 @@ export function WhatIfPanel({ meta, at, onTrade }: { meta: Meta; at: number; onT
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">
           <span className="text-[11px] text-muted">If I had put in</span>
-          <span className="flex h-8 items-center rounded-md border border-line bg-raised px-2">
+          <span className="flex h-8 items-center rounded-[2px] border border-line bg-raised px-2">
             <span className="text-muted">₹</span>
             <input
               inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ""))}
@@ -51,7 +51,7 @@ export function WhatIfPanel({ meta, at, onTrade }: { meta: Meta; at: number; onT
               const [d, t] = e.target.value.split("T");
               if (d && t) setFrom(Math.max(meta.range.start, istToEpoch(d, t)));
             }}
-            className="h-8 rounded-md border border-line bg-raised px-2 text-[12px] num"
+            className="h-8 rounded-[2px] border border-line bg-raised px-2 text-[12px] num"
           />
         </label>
         <span className="pb-1.5 text-muted">and held until now, {when(at)}</span>
@@ -103,7 +103,7 @@ function Bar({ value, max }: { value: number; max: number }) {
     <span className="relative inline-block h-2 w-20" aria-hidden="true">
       <span className="absolute left-1/2 top-0 h-2 w-px bg-line" />
       <span
-        className={`absolute top-0 h-2 rounded-sm ${value >= 0 ? "bg-up" : "bg-down"}`}
+        className={`absolute top-0 h-2 rounded-[2px] ${value >= 0 ? "bg-up" : "bg-down"}`}
         style={value >= 0 ? { left: "50%", width: w } : { right: "50%", width: w }}
       />
     </span>

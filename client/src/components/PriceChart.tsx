@@ -30,8 +30,8 @@ export function PriceChart({ symbol, quote, candles, trades, orders, holding }: 
   useEffect(() => {
     const c = createChart(box.current!, {
       autoSize: true,
-      layout: { background: { type: ColorType.Solid, color: css("--color-ink") }, textColor: css("--color-muted"), fontFamily: "IBM Plex Sans", fontSize: 11, attributionLogo: false },
-      grid: { vertLines: { color: "rgba(42,57,87,0.35)" }, horzLines: { color: "rgba(42,57,87,0.35)" } },
+      layout: { background: { type: ColorType.Solid, color: css("--color-ink") }, textColor: css("--color-muted"), fontFamily: "Barlow", fontSize: 11, attributionLogo: false },
+      grid: { vertLines: { color: "rgba(242,239,228,0.05)" }, horzLines: { color: "rgba(242,239,228,0.07)" } },
       rightPriceScale: { borderColor: css("--color-line") },
       timeScale: { borderColor: css("--color-line"), timeVisible: true, secondsVisible: false, rightOffset: 4, barSpacing: 9 },
       crosshair: { mode: CrosshairMode.Normal },
@@ -59,7 +59,7 @@ export function PriceChart({ symbol, quote, candles, trades, orders, holding }: 
     series.setData(candles.map((c) => ({ time: chartTime(c.ts) as UTCTimestamp, open: c.open / 100, high: c.high / 100, low: c.low / 100, close: c.close / 100 })));
     volumeSeries.current!.setData(candles.map((c) => ({
       time: chartTime(c.ts) as UTCTimestamp, value: c.volume,
-      color: c.close >= c.open ? "rgba(38,180,110,0.35)" : "rgba(239,83,80,0.35)",
+      color: c.close >= c.open ? "rgba(123,198,123,0.32)" : "rgba(226,121,107,0.32)",
     })));
 
     // Your fills for this stock, as arrows on the candle they happened in.
@@ -78,7 +78,7 @@ export function PriceChart({ symbol, quote, candles, trades, orders, holding }: 
     for (const l of lines.current) series.removePriceLine(l);
     lines.current = [];
     if (holding) {
-      lines.current.push(series.createPriceLine({ price: holding.avgPrice / 100, color: css("--color-flame"), lineStyle: LineStyle.Dashed, lineWidth: 1, axisLabelVisible: true, title: `Avg cost (${holding.qty})` }));
+      lines.current.push(series.createPriceLine({ price: holding.avgPrice / 100, color: css("--color-chalk"), lineStyle: LineStyle.Dashed, lineWidth: 1, axisLabelVisible: true, title: `Avg cost (${holding.qty})` }));
     }
     for (const o of orders.filter((x) => x.symbol === symbol && x.status === "OPEN")) {
       lines.current.push(series.createPriceLine({
@@ -103,7 +103,7 @@ export function PriceChart({ symbol, quote, candles, trades, orders, holding }: 
       <div className="flex flex-wrap items-end gap-x-6 gap-y-1 border-b border-line px-4 py-2.5">
         <div>
           <div className="flex items-baseline gap-2">
-            <h1 className="text-[17px] font-bold tracking-tight">{symbol}</h1>
+            <h1 className="cond text-[21px] font-bold uppercase">{symbol}</h1>
             <span className="text-muted">{quote?.name}</span>
             <span className="rounded border border-line px-1.5 text-[11px] text-muted">{quote?.sector}</span>
           </div>

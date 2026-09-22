@@ -15,7 +15,7 @@ export function Watchlist({ quotes, selected, holdings, onSelect, onTrade }: Pro
   return (
     <aside className="flex min-h-0 flex-col bg-panel" aria-label="Watchlist">
       <div className="flex items-baseline justify-between px-3 pb-1.5 pt-2.5">
-        <h2 className="text-[13px] font-semibold">Watchlist</h2>
+        <h2 className="cond text-[15px] font-semibold uppercase">Watchlist</h2>
         <span className="text-[11px] text-faint">NSE, 10 stocks</span>
       </div>
       <ul className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
@@ -29,10 +29,11 @@ export function Watchlist({ quotes, selected, holdings, onSelect, onTrade }: Pro
                 aria-current={active}
                 onClick={() => onSelect(q.symbol)}
                 onKeyDown={(e) => { if (e.key === "Enter") onSelect(q.symbol); }}
-                className={`group relative grid cursor-pointer grid-cols-[1fr_52px_auto] items-center gap-2 border-l-2 px-3 py-2 ${active ? "border-flame bg-raised" : "border-transparent hover:bg-raised/60"}`}
+                className={`group relative grid cursor-pointer grid-cols-[1fr_52px_auto] items-center gap-2 border-b border-dashed border-line/60 px-3 py-2 ${active ? "bg-raised" : "hover:bg-raised/50"}`}
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 font-semibold">
+                    <span className={active ? "text-chalk" : "text-transparent"} aria-hidden="true">▸</span>
                     {q.symbol}
                     {held.has(q.symbol) && <span className="h-1.5 w-1.5 rounded-full bg-buy" title="You hold this" />}
                   </div>
