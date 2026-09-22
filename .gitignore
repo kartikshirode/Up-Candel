@@ -1,0 +1,11 @@
+node_modules/
+client/dist/
+var/
+*.db
+*.db-shm
+*.db-wal
+.env
+.DS_Store
+.claude/learning.md
+.agents/learning.md
+.claude/
