@@ -431,21 +431,26 @@ describe("limit order edge cases", () => {
   });
 });
 
-describe("forward-only trading", () => {
-  it("allows another order at exactly the latest activity but not one second before", () => {
+describe("trading across time", () => {
+  it("takes orders at, before and after the latest activity", () => {
     const at = t(2, "11:15");
     buy("TCS", 1, at);
     expect(buy("TCS", 1, at).status).toBe("FILLED");
-    expectTradeError(() => buy("TCS", 1, at - 1), "TIME_TRAVEL");
+    expect(buy("TCS", 1, at - 1).status).toBe("FILLED"); // one second earlier is fine
+    expect(buy("TCS", 1, t(1, "10:15")).status).toBe("FILLED"); // a day earlier too
     expect(engine.latestActivity()).toBe(at);
+    expect(engine.portfolio(t(1, "10:15")).holdings[0].qty).toBe(1);
+    expect(engine.portfolio(at).holdings[0].qty).toBe(4);
   });
 
-  it("applies the same rule to cancels", () => {
+  it("lets an order be cancelled from an earlier time than a later trade", () => {
     const at = t(2, "10:15");
     const order = engine.placeOrder({ symbol: "ITC", side: "BUY", type: "LIMIT", qty: 1, limitPrice: roundToTick(market.priceAt("ITC", at) * 0.93, "up"), at });
     buy("SBIN", 1, t(2, "12:15"));
-    expectTradeError(() => engine.cancelOrder(order.id, t(2, "11:15")), "TIME_TRAVEL");
-    expect(engine.cancelOrder(order.id, t(2, "12:15")).status).toBe("CANCELLED");
+    const cancelled = engine.cancelOrder(order.id, t(2, "11:15")); // earlier than the SBIN buy
+    expect(cancelled.status).toBe("CANCELLED");
+    expect(cancelled.resolvedAt).toBe(t(2, "11:15"));
+    expectTradeError(() => engine.cancelOrder(order.id, t(2, "12:15")), "NOT_OPEN");
     expect(engine.latestActivity()).toBe(t(2, "12:15"));
   });
 
@@ -504,7 +509,7 @@ describe("forward-only trading", () => {
     buy("ITC", 1, after);
     expect(engine.orderView(order.id, after)!.status).toBe("FILLED");
     expect(engine.latestActivity()).toBe(after);
-    expectTradeError(() => buy("ITC", 1, touch.ts - 60), "TIME_TRAVEL");
+    expect(buy("ITC", 1, touch.ts - 60).status).toBe("FILLED"); // still free to trade before it
   });
 
   it("works out the same fills whether you look ahead or trade straight through", () => {

@@ -57,15 +57,23 @@ export interface PlaceOrderInput {
 }
 
 const fmt = (paise: number) => `Rs ${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const fmtTime = (ts: number) => { const t = epochToIst(ts); return `${t.date} ${t.time}`; };
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** "Thu 1 Oct, 14:15", the way the screen shows it. */
+const fmtTime = (ts: number) => {
+  const { date, time, weekday } = epochToIst(ts);
+  const [, month, dayOfMonth] = date.split("-").map(Number);
+  return `${WEEKDAYS[weekday]} ${dayOfMonth} ${MONTHS[month - 1]}, ${time}`;
+};
 
 /**
  * The trading engine. All money is integer paise and all times are simulated market time.
  *
  * Two rules keep the ledger consistent while the user moves the clock around:
  *  - Every view is "as of" the selected time: only trades at or before it count.
- *  - Trading only moves forward: a new order cannot be placed earlier than the latest
- *    activity already on the ledger.
+ *  - An order can be placed at any open market time, including before trades you have
+ *    already made, as long as replaying the whole ledger in time order never leaves cash
+ *    or a holding negative.
  *
  * Resting limit orders are only filled for real when an order is placed or cancelled. A view
  * of a later time works the fills out inside a savepoint and rolls them back, so looking
@@ -243,6 +251,37 @@ export class Engine {
     run();
   }
 
+  /**
+   * Replays every trade, with `candidate` slotted into its place in time, and refuses the
+   * order if the books ever go negative afterwards. This is what lets you trade at a time
+   * earlier than trades you have already made without the ledger contradicting itself.
+   */
+  private checkLaterTrades(candidate: { symbol: string; side: Side; qty: number; price: number; charges: number; simTime: number }) {
+    const later = this.db.prepare("SELECT * FROM trades WHERE sim_time > ? ORDER BY sim_time, id").all(candidate.simTime) as TradeRow[];
+    if (later.length === 0) return;
+
+    const led = this.ledger(candidate.simTime);
+    let cash = led.cash;
+    const held = new Map<string, number>([...led.positions].map(([symbol, p]) => [symbol, p.qty]));
+    const apply = (t: { symbol: string; side: Side; qty: number; price: number; charges: number }) => {
+      const gross = t.qty * t.price;
+      cash += t.side === "BUY" ? -(gross + t.charges) : gross - t.charges;
+      held.set(t.symbol, (held.get(t.symbol) ?? 0) + (t.side === "BUY" ? t.qty : -t.qty));
+    };
+    apply(candidate);
+
+    for (const t of later) {
+      apply(t);
+      const what = `your ${t.side === "BUY" ? "buy" : "sell"} of ${t.qty} ${t.symbol} at ${fmtTime(t.sim_time)}`;
+      if (cash < 0) {
+        throw new TradeError("LEDGER_CONFLICT", `Placing this order back in time would leave ${what} short by ${fmt(-cash)}. Trade later than that, or trade smaller here.`);
+      }
+      if ((held.get(t.symbol) ?? 0) < 0) {
+        throw new TradeError("LEDGER_CONFLICT", `You already made ${what}, and this order would leave that sale without enough shares. Trade later than that, or trade smaller here.`);
+      }
+    }
+  }
+
   placeOrder(input: PlaceOrderInput) {
     const { symbol, side, type, qty, at } = input;
     const note = input.note?.trim() || null;
@@ -254,11 +293,6 @@ export class Engine {
     if (!status.isOpen) throw new TradeError("MARKET_CLOSED", `Market is closed at ${fmtTime(at)} (${status.label}). Orders are accepted 09:15-15:30 on trading days.`);
 
     this.processPendingOrders(at);
-
-    const latest = this.latestActivity();
-    if (latest !== null && at < latest) {
-      throw new TradeError("TIME_TRAVEL", `Your ledger already has activity at ${fmtTime(latest)}. Trading only moves forward, so move the clock to ${fmtTime(latest)} or later, or reset the account.`);
-    }
 
     const ltp = this.market.priceAt(symbol, at);
     let limit: number | null = null;
@@ -299,6 +333,9 @@ export class Engine {
       }
     }
 
+    // A trade placed before trades you already made has to leave those still payable.
+    if (fillsNow) this.checkLaterTrades({ symbol, side, qty, price: fillPrice, charges: charges.total, simTime: at });
+
     const orderId = this.db.transaction(() => {
       const res = this.db.prepare(`INSERT INTO orders (symbol, side, type, qty, limit_price, status, placed_at, note)
         VALUES (?, ?, ?, ?, ?, 'OPEN', ?, ?)`).run(symbol, side, type, qty, limit, at, note);
@@ -315,11 +352,7 @@ export class Engine {
     const order = this.db.prepare("SELECT * FROM orders WHERE id = ?").get(id) as OrderRow | undefined;
     if (!order || order.placed_at > at) throw new TradeError("NOT_FOUND", "No such order at this time.", 404);
     if (order.status !== "OPEN") throw new TradeError("NOT_OPEN", `Order #${id} is already ${order.status.toLowerCase()}.`);
-    const latest = this.latestActivity();
-    if (latest !== null && at < latest) {
-      throw new TradeError("TIME_TRAVEL", `Your ledger already has activity at ${fmtTime(latest)}. Move the clock forward to cancel.`);
-    }
-    this.db.prepare("UPDATE orders SET status = 'CANCELLED', resolved_at = ? WHERE id = ?").run(at, id);
+    this.db.prepare("UPDATE orders SET status = 'CANCELLED', resolved_at = ? WHERE id = ?").run(Math.max(at, order.placed_at), id);
     return this.orderView(id, at)!;
   }
 

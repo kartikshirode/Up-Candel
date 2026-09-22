@@ -126,9 +126,24 @@ describe("trading", () => {
     expectTradeError(() => engine.placeOrder({ symbol: "NOPE", side: "BUY", type: "MARKET", qty: 1, at }), "UNKNOWN_SYMBOL");
   });
 
-  it("only lets trading move forward in time", () => {
+  it("allows a trade before an earlier one as long as the books still balance", () => {
     engine.placeOrder({ symbol: "TCS", side: "BUY", type: "MARKET", qty: 1, at: t(5, "10:15") });
-    expectTradeError(() => engine.placeOrder({ symbol: "TCS", side: "BUY", type: "MARKET", qty: 1, at: t(2, "10:15") }), "TIME_TRAVEL");
+    const back = engine.placeOrder({ symbol: "TCS", side: "BUY", type: "MARKET", qty: 1, at: t(2, "10:15") });
+    expect(back.status).toBe("FILLED");
+    expect(engine.portfolio(t(5, "10:15")).holdings[0].qty).toBe(2);
+    expect(engine.portfolio(t(3, "10:15")).holdings[0].qty).toBe(1); // only the back-dated one by then
+  });
+
+  it("refuses a back-dated trade that would leave a later one short", () => {
+    const early = t(2, "10:15");
+    const late = t(6, "11:15");
+    engine.placeOrder({ symbol: "SBIN", side: "BUY", type: "MARKET", qty: 100, at: early });
+    engine.placeOrder({ symbol: "SBIN", side: "SELL", type: "MARKET", qty: 100, at: late });
+    // Selling 40 in between would leave the later sale of 100 without the shares.
+    expectTradeError(() => engine.placeOrder({ symbol: "SBIN", side: "SELL", type: "MARKET", qty: 40, at: t(4, "10:15") }), "LEDGER_CONFLICT");
+    // Spending nearly all the cash in between would leave a later buy unpayable.
+    engine.placeOrder({ symbol: "LT", side: "BUY", type: "MARKET", qty: 150, at: t(7, "10:15") });
+    expectTradeError(() => engine.placeOrder({ symbol: "ITC", side: "BUY", type: "MARKET", qty: 3000, at: t(3, "10:15") }), "LEDGER_CONFLICT");
   });
 
   it("shows the account as it was at an earlier time", () => {
