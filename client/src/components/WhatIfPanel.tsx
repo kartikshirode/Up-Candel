@@ -5,7 +5,8 @@ import { inr, int, pct, price, toLocalInput, tone, when } from "../format.ts";
 
 /**
  * Hindsight, on purpose: pick a moment and an amount, and see what each stock would have
- * turned it into by the current clock time. Trading stays forward-only; this only looks.
+ * turned it into by the current clock time. This panel only looks; the Buy now button takes
+ * you to the ticket at the current clock time.
  */
 export function WhatIfPanel({ meta, at, onTrade }: { meta: Meta; at: number; onTrade: (side: Side, symbol: string) => void }) {
   const [from, setFrom] = useState(meta.range.start);

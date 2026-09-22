@@ -25,7 +25,7 @@ A few things I added on top, because a trading screen felt incomplete without th
 - **Limit orders that fill during replay.** A buy limit below the market rests in the Orders tab and fills when a later candle's low reaches it. If a candle gaps below your limit you get the better price (the open), which is how real fills work.
 - **Real charges.** STT, exchange fee, SEBI fee, stamp duty, GST and the DP charge, at Zerodha's published delivery rates. You can switch them off in the account dialog.
 - **You vs the market.** The Performance tab plots your net worth against an equal-weight basket of all ten stocks that started with the same cash, plus win rate, max drawdown and best and worst sells.
-- **What if.** Pick an amount and a moment, and see what each stock would have turned it into by now. It's there on purpose as hindsight; trading itself stays forward-only (see below).
+- **What if.** Pick an amount and a moment, and see what each stock would have turned it into by now. Hindsight on purpose, and a quick way to find a moment worth going back to.
 - **Keyboard shortcuts** in the style of Kite: B and S to trade, Space to play, arrow keys to step and move through the watchlist, `?` for the full list.
 - **Trade journal.** Every order takes an optional note ("why this trade?") that stays with the transaction and the CSV export.
 
