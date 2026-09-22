@@ -466,17 +466,59 @@ describe("forward-only trading", () => {
     expect(snapshot()).toBe(before);
   });
 
-  it("fills resting orders when a later time is viewed, which moves the forward-only line", () => {
-    // Documents current behaviour: looking ahead is enough to settle a resting order.
+  it("shows a resting order as filled when looking ahead, without saving the fill", async () => {
     const at = t("01", "10:15");
     const limit = roundToTick(market.priceAt("TCS", at) * 0.99, "down");
     const touch = firstTouch("TCS", at, limit, "BUY")!;
     expect(touch.ts).toBeGreaterThan(t("01", "10:45"));
-    engine.placeOrder({ symbol: "TCS", side: "BUY", type: "LIMIT", qty: 1, limitPrice: limit, at });
+    const order = engine.placeOrder({ symbol: "TCS", side: "BUY", type: "LIMIT", qty: 1, limitPrice: limit, at });
+    const before = snapshot();
+
+    // Every view of a later time sees the fill...
+    const later = t("21", "15:15");
+    expect(engine.orders(later).find((o) => o.id === order.id)!.status).toBe("FILLED");
+    expect(engine.portfolio(later).holdings.find((h) => h.symbol === "TCS")!.qty).toBe(1);
+    expect(engine.tradeHistory(later)).toHaveLength(1);
+    expect(engine.performance(later).stats.tradeCount).toBe(1);
+    await request(createApp(engine)).get(`/api/portfolio?at=${later}`).expect(200);
+
+    // ...but nothing is written, so trading earlier is still allowed.
+    expect(snapshot()).toBe(before);
     expect(engine.latestActivity()).toBe(at);
+    expect(buy("ITC", 1, t("01", "10:45")).status).toBe("FILLED");
+    expect(engine.orders(t("01", "10:45")).find((o) => o.id === order.id)!.status).toBe("OPEN");
+  });
+
+  it("saves a looked-ahead fill once you trade past it", () => {
+    const at = t("01", "10:15");
+    const limit = roundToTick(market.priceAt("TCS", at) * 0.99, "down");
+    const touch = firstTouch("TCS", at, limit, "BUY")!;
+    const order = engine.placeOrder({ symbol: "TCS", side: "BUY", type: "LIMIT", qty: 1, limitPrice: limit, at });
     engine.portfolio(t("21", "15:15"));
-    expect(engine.latestActivity()).toBe(touch.ts);
-    expectTradeError(() => buy("ITC", 1, t("01", "10:45")), "TIME_TRAVEL");
+
+    const after = engine.market.timeline.find((ts) => ts > touch.ts)!;
+    buy("ITC", 1, after);
+    expect(engine.orderView(order.id, after)!.status).toBe("FILLED");
+    expect(engine.latestActivity()).toBe(after);
+    expectTradeError(() => buy("ITC", 1, touch.ts - 60), "TIME_TRAVEL");
+  });
+
+  it("works out the same fills whether you look ahead or trade straight through", () => {
+    const at = t("02", "10:15");
+    const place = (e: typeof engine) => {
+      e.placeOrder({ symbol: "TCS", side: "BUY", type: "LIMIT", qty: 5, limitPrice: roundToTick(e.market.priceAt("TCS", at) * 0.98, "down"), at });
+      e.placeOrder({ symbol: "INFY", side: "BUY", type: "LIMIT", qty: 7, limitPrice: roundToTick(e.market.priceAt("INFY", at) * 0.985, "down"), at });
+    };
+    place(engine);
+    const viewed = engine.portfolio(t("21", "15:15")).summary;
+    const committed = engine.tradeHistory(t("21", "15:15"));
+
+    buy("ITC", 1, t("21", "15:15")); // commits everything up to the end
+    const real = engine.portfolio(t("21", "15:15"));
+    const itc = real.holdings.find((h) => h.symbol === "ITC")!;
+    expect(engine.tradeHistory(t("21", "15:15")).length).toBe(committed.length + 1);
+    expect(real.summary.netWorth).toBe(viewed.netWorth);
+    expect(real.summary.invested).toBe(viewed.invested + itc.invested);
   });
 });
 

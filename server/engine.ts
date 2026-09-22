@@ -66,6 +66,10 @@ const fmtTime = (ts: number) => { const t = epochToIst(ts); return `${t.date} ${
  *  - Every view is "as of" the selected time: only trades at or before it count.
  *  - Trading only moves forward: a new order cannot be placed earlier than the latest
  *    activity already on the ledger.
+ *
+ * Resting limit orders are only filled for real when an order is placed or cancelled. A view
+ * of a later time works the fills out inside a savepoint and rolls them back, so looking
+ * ahead never moves the forward-only line.
  */
 export class Engine {
   constructor(private readonly db: DB, readonly market: Market) {}
@@ -180,6 +184,18 @@ export class Engine {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(order.id, order.symbol, order.side, order.qty, price, charges.total, JSON.stringify(charges), at, order.note);
     this.db.prepare("UPDATE orders SET status = 'FILLED', resolved_at = ? WHERE id = ?").run(at, order.id);
+  }
+
+  /** Runs `fn` with resting orders filled up to `at`, then discards those fills. */
+  private asOf<T>(at: number, fn: () => T): T {
+    this.db.exec("SAVEPOINT view_as_of");
+    try {
+      this.processPendingOrders(at);
+      return fn();
+    } finally {
+      this.db.exec("ROLLBACK TO view_as_of");
+      this.db.exec("RELEASE view_as_of");
+    }
   }
 
   /**
@@ -336,13 +352,19 @@ export class Engine {
   }
 
   orders(at: number) {
-    this.processPendingOrders(at);
+    return this.asOf(at, () => this.ordersAt(at));
+  }
+
+  private ordersAt(at: number) {
     const rows = this.db.prepare("SELECT * FROM orders WHERE placed_at <= ? ORDER BY placed_at DESC, id DESC").all(at) as OrderRow[];
     return rows.map((o) => this.orderAsOf(o, at));
   }
 
   tradeHistory(at: number) {
-    this.processPendingOrders(at);
+    return this.asOf(at, () => this.tradeHistoryAt(at));
+  }
+
+  private tradeHistoryAt(at: number) {
     const led = this.ledger(at);
     return this.trades(at).reverse().map((t) => ({
       id: t.id,
@@ -362,7 +384,10 @@ export class Engine {
   }
 
   portfolio(at: number) {
-    this.processPendingOrders(at);
+    return this.asOf(at, () => this.portfolioAt(at));
+  }
+
+  private portfolioAt(at: number) {
     const account = this.account();
     const led = this.ledger(at);
     const reserved = this.reservationsAsOf(at);
@@ -425,7 +450,7 @@ export class Engine {
   /** Cash blocked by buy orders that were open at `at`. */
   private reservationsAsOf(at: number): number {
     const charges = !!this.account().charges_enabled;
-    return this.orders(at)
+    return this.ordersAt(at)
       .filter((o) => o.status === "OPEN" && o.side === "BUY")
       .reduce((n, o) => n + o.qty * o.limitPrice! + (charges ? computeCharges("BUY", o.qty * o.limitPrice!).total : 0), 0);
   }
@@ -435,7 +460,10 @@ export class Engine {
    * index of all ten stocks that starts with the same money. Also trade statistics.
    */
   performance(at: number) {
-    this.processPendingOrders(at);
+    return this.asOf(at, () => this.performanceAt(at));
+  }
+
+  private performanceAt(at: number) {
     const startingCash = this.account().starting_cash;
     const points = this.market.timeline.filter((ts) => ts <= at);
     const trades = this.trades(at);
