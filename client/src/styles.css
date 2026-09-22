@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --color-ink: #111b2d;      /* page */
+  --color-panel: #16223a;    /* surfaces */
+  --color-raised: #1d2b47;   /* inputs, hover */
+  --color-line: #2a3957;     /* borders */
+  --color-text: #e8edf6;
+  --color-muted: #93a1bb;
+  --color-faint: #5d6c88;
+  --color-up: #26b46e;
+  --color-down: #ef5350;
+  --color-buy: #3d7eff;
+  --color-sell: #ff6b35;
+  --color-flame: #f5a524;    /* the replay playhead and clock, nothing else */
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--color-ink);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.num { font-variant-numeric: tabular-nums; }
+.up { color: var(--color-up); }
+.down { color: var(--color-down); }
+
+:focus-visible { outline: 2px solid var(--color-flame); outline-offset: 1px; border-radius: 4px; }
+
+input, select, textarea, button { font: inherit; color: inherit; }
+input[type="datetime-local"]::-webkit-calendar-picker-indicator { filter: invert(0.75); cursor: pointer; }
+
+table.data-table { width: 100%; border-collapse: collapse; }
+table.data-table th { font-weight: 500; color: var(--color-muted); text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--color-line); white-space: nowrap; position: sticky; top: 0; background: var(--color-panel); }
+table.data-table td { text-align: right; padding: 7px 10px; border-bottom: 1px solid color-mix(in srgb, var(--color-line) 55%, transparent); white-space: nowrap; }
+table.data-table th:first-child, table.data-table td:first-child { text-align: left; }
+table.data-table tbody tr:hover { background: color-mix(in srgb, var(--color-raised) 60%, transparent); }
+table.data-table tfoot td { font-weight: 600; border-top: 1px solid var(--color-line); border-bottom: 0; }
+
+.scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--color-line) transparent; }
+
+@keyframes toast-in { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+.toast-in { animation: toast-in 160ms ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-in { animation: none; }
+}
