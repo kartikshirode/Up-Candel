@@ -50,7 +50,7 @@ npm start          # http://localhost:3001
 Other scripts:
 
 ```bash
-npm test               # 65 tests: data, pricing, trading rules, P&L invariants, limit fills, charges, clock edges, API validation
+npm test               # 67 tests: data, pricing, trading rules, P&L invariants, limit fills, charges, clock edges, API validation
 npm run typecheck
 npm run generate-data  # rebuilds the CSVs in data/ (same seed, same output)
 ```
@@ -99,6 +99,7 @@ Real brokers and the tax department use FIFO lot matching instead of a running a
 **Moving through time.** This part needed a rule, since the brief asks for prices at any selected time and you can also trade.
 - Everything you see is *as of* the clock. Jump back to 5 Sep after trading on the 17th and the holdings, cash and history show exactly what you had on the 5th. Later trades show as faded dots on the tape.
 - Trading only moves forward. You can't place an order earlier than the latest activity on your ledger, otherwise you could sell on day 3 shares you'd already sold on day 8. The ticket explains this and offers a jump back to your latest trade. Reset the account if you want to start over.
+- Looking ahead is free. If you have a limit order waiting and scrub past the moment it would fill, you'll see it filled, but nothing is saved until you actually trade at or after that time. So you can peek at day 10 and still come back and trade on day 4.
 
 ## API
 
