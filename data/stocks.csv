@@ -1,0 +1,11 @@
+symbol,name,sector,exchange,prev_close
+RELIANCE,Reliance Industries,Energy,NSE,1240.00
+TCS,Tata Consultancy Services,IT,NSE,2110.00
+INFY,Infosys,IT,NSE,1030.00
+HDFCBANK,HDFC Bank,Banking,NSE,731.00
+ICICIBANK,ICICI Bank,Banking,NSE,1340.00
+SBIN,State Bank of India,Banking,NSE,987.00
+ITC,ITC,FMCG,NSE,266.00
+HINDUNILVR,Hindustan Unilever,FMCG,NSE,1934.00
+BHARTIARTL,Bharti Airtel,Telecom,NSE,1817.00
+LT,Larsen & Toubro,Infrastructure,NSE,3885.00
