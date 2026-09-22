@@ -144,6 +144,8 @@ export function createApp(engine: Engine) {
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (err instanceof TradeError) {
       res.status(err.status).json({ error: { code: err.code, message: err.message } });
+    } else if ((err as { type?: string }).type === "entity.parse.failed") {
+      res.status(400).json({ error: { code: "BAD_JSON", message: "The request body is not valid JSON." } });
     } else if (err instanceof z.ZodError) {
       const first = err.issues[0];
       res.status(400).json({ error: { code: "BAD_REQUEST", message: `${first.path.join(".") || "body"}: ${first.message}` } });
