@@ -241,6 +241,16 @@ export class Engine {
         if (order.side === "SELL" && order.qty > held - (reserved.shares.get(order.symbol) ?? 0)) {
           rejection = "Not enough shares when the limit price was reached";
         }
+        if (!rejection) {
+          // The order may have been placed earlier than trades that are already on the books,
+          // so its fill has to leave those payable, exactly as a back-dated market order does.
+          const clash = this.laterTradeConflict({ symbol: order.symbol, side: order.side, qty: order.qty, price, charges: charges.total, simTime: ts });
+          if (clash) {
+            rejection = clash.kind === "cash"
+              ? `Filling it would have left ${clash.what} short by ${fmt(clash.short)}`
+              : `Filling it would have left ${clash.what} without enough shares`;
+          }
+        }
         if (rejection) {
           this.db.prepare("UPDATE orders SET status = 'REJECTED', resolved_at = ?, reason = ? WHERE id = ?").run(ts, rejection, order.id);
         } else {
@@ -252,13 +262,13 @@ export class Engine {
   }
 
   /**
-   * Replays every trade, with `candidate` slotted into its place in time, and refuses the
-   * order if the books ever go negative afterwards. This is what lets you trade at a time
-   * earlier than trades you have already made without the ledger contradicting itself.
+   * Replays every trade, with `candidate` slotted into its place in time, and reports the
+   * first trade after it that the books could no longer pay for. This is what lets a trade
+   * happen earlier than trades already made without the ledger contradicting itself.
    */
-  private checkLaterTrades(candidate: { symbol: string; side: Side; qty: number; price: number; charges: number; simTime: number }) {
+  private laterTradeConflict(candidate: { symbol: string; side: Side; qty: number; price: number; charges: number; simTime: number }) {
     const later = this.db.prepare("SELECT * FROM trades WHERE sim_time > ? ORDER BY sim_time, id").all(candidate.simTime) as TradeRow[];
-    if (later.length === 0) return;
+    if (later.length === 0) return null;
 
     const led = this.ledger(candidate.simTime);
     let cash = led.cash;
@@ -273,13 +283,19 @@ export class Engine {
     for (const t of later) {
       apply(t);
       const what = `your ${t.side === "BUY" ? "buy" : "sell"} of ${t.qty} ${t.symbol} at ${fmtTime(t.sim_time)}`;
-      if (cash < 0) {
-        throw new TradeError("LEDGER_CONFLICT", `Placing this order back in time would leave ${what} short by ${fmt(-cash)}. Trade later than that, or trade smaller here.`);
-      }
-      if ((held.get(t.symbol) ?? 0) < 0) {
-        throw new TradeError("LEDGER_CONFLICT", `You already made ${what}, and this order would leave that sale without enough shares. Trade later than that, or trade smaller here.`);
-      }
+      if (cash < 0) return { trade: t, what, kind: "cash" as const, short: -cash };
+      if ((held.get(t.symbol) ?? 0) < 0) return { trade: t, what, kind: "shares" as const, short: -held.get(t.symbol)! };
     }
+    return null;
+  }
+
+  /** Refuses an order that would leave one of your later trades unpayable. */
+  private checkLaterTrades(candidate: { symbol: string; side: Side; qty: number; price: number; charges: number; simTime: number }) {
+    const clash = this.laterTradeConflict(candidate);
+    if (!clash) return;
+    throw new TradeError("LEDGER_CONFLICT", clash.kind === "cash"
+      ? `Placing this order back in time would leave ${clash.what} short by ${fmt(clash.short)}. Trade later than that, or trade smaller here.`
+      : `You already made ${clash.what}, and this order would leave that sale without enough shares. Trade later than that, or trade smaller here.`);
   }
 
   placeOrder(input: PlaceOrderInput) {
@@ -423,7 +439,9 @@ export class Engine {
   private portfolioAt(at: number) {
     const account = this.account();
     const led = this.ledger(at);
-    const reserved = this.reservationsAsOf(at);
+    // A trade made before a resting order was placed can leave less cash than that order
+    // reserved. It is rejected as soon as its price is touched; until then nothing is free.
+    const reserved = Math.min(led.cash, this.reservationsAsOf(at));
 
     const holdings = [...led.positions.entries()]
       .filter(([, p]) => p.qty > 0)
