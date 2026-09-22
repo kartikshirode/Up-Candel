@@ -21,7 +21,7 @@ Every requirement from the brief, and where it lives:
 
 A few things I added on top, because a trading screen felt incomplete without them:
 
-- **Replay tape.** Every trading day is one segment. The playhead shows where the clock is, a dot marks each of your trades, and days you've already replayed get tinted green or red by how the whole market did. Days ahead stay blank, so the tape never gives away the future.
+- **Replay tape.** Every trading day is one segment. The playhead shows where the clock is, a dot marks each of your trades, and days you've already replayed get tinted green or red by how the whole market did. Days ahead stay blank, so the tape never gives away the future. The replay stops on the last candle of the data, where Play turns into Replay and starts again from the first.
 - **Limit orders that fill during replay.** A buy limit below the market rests in the Orders tab and fills when a later candle's low reaches it. If a candle gaps below your limit you get the better price (the open), which is how real fills work.
 - **Real charges.** STT, exchange fee, SEBI fee, stamp duty, GST and the DP charge, at Zerodha's published delivery rates. You can switch them off in the account dialog.
 - **You vs the market.** The Performance tab plots your net worth against an equal-weight basket of all ten stocks that started with the same cash, plus win rate, max drawdown and best and worst sells.

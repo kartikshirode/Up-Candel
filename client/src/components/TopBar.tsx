@@ -10,6 +10,7 @@ interface Props {
   portfolio: Portfolio;
   playing: boolean;
   speed: Speed;
+  finished: boolean;
   onTogglePlay: () => void;
   onStep: (dir: 1 | -1) => void;
   onSpeed: (s: Speed) => void;
@@ -64,12 +65,14 @@ export function TopBar(p: Props) {
         <button
           className={`${btn} w-auto gap-1.5 px-3 ${p.playing ? "border-chalk text-chalk" : ""}`}
           onClick={p.onTogglePlay}
-          title="Play or pause the replay (Space)"
+          title={p.playing ? "Pause the replay (Space)" : p.finished ? "The data ends here. Play again from the first candle (Space)" : "Play the replay (Space)"}
         >
           {p.playing
             ? <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h4v12H3zM9 2h4v12H9z" /></svg>
-            : <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2v12l11-6z" /></svg>}
-          <span className="text-[12px] font-medium">{p.playing ? "Pause" : "Play"}</span>
+            : p.finished
+              ? <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M13.5 8a5.5 5.5 0 1 1-1.9-4.2M13 1v3h-3" /></svg>
+              : <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2v12l11-6z" /></svg>}
+          <span className="text-[12px] font-medium">{p.playing ? "Pause" : p.finished ? "Replay" : "Play"}</span>
         </button>
         <button className={btn} onClick={() => p.onStep(1)} title="Forward one candle (→)" aria-label="Forward one candle">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2v12l8-6zM11 2h2v12h-2z" /></svg>

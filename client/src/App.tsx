@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Side } from "../../shared/market.ts";
 import { api, type Candle, type MarketSnapshot, type Meta, type Order, type Performance, type Portfolio, type Trade } from "./api.ts";
+import { atEndOfData, nextCandle, prevCandle } from "./clock.ts";
 import { AccountDialog } from "./components/AccountDialog.tsx";
 import { BottomPanel, type TabId } from "./components/BottomPanel.tsx";
 import { OrderTicket } from "./components/OrderTicket.tsx";
@@ -97,27 +98,31 @@ export default function App() {
 
   const nextTs = useCallback((from: number) => {
     if (!meta) return from;
-    return meta.timeline.find((ts) => ts > from) ?? meta.range.end;
+    return nextCandle(meta.timeline, from) ?? from;
   }, [meta]);
-  const prevTs = useCallback((from: number) => {
-    if (!meta) return from;
-    for (let i = meta.timeline.length - 1; i >= 0; i--) if (meta.timeline[i] < from) return meta.timeline[i];
-    return meta.range.start;
-  }, [meta]);
+  const prevTs = useCallback((from: number) => (meta ? prevCandle(meta.timeline, from) : from), [meta]);
+  const finished = !!meta && atEndOfData(meta.timeline, at);
 
-  // Replay: advance one candle per tick.
+  // Replay: advance one candle per tick, and stop on the last one.
   useEffect(() => {
     if (!playing || !meta) return;
     const timer = setInterval(() => {
       setAtState((current) => {
-        const next = nextTs(current);
-        if (next >= meta.range.end || next === current) { setPlaying(false); return meta.range.end; }
+        const next = nextCandle(meta.timeline, current);
+        if (next === null) { setPlaying(false); return current; }
         save("uc.at", next);
         return next;
       });
     }, STEP_MS / speed);
     return () => clearInterval(timer);
-  }, [playing, speed, meta, nextTs]);
+  }, [playing, speed, meta]);
+
+  // Play at the end of the data starts the replay again from the first candle.
+  const togglePlay = useCallback(() => {
+    if (!meta) return;
+    if (!playing && atEndOfData(meta.timeline, at)) setAt(meta.range.start);
+    setPlaying((p) => !p);
+  }, [meta, playing, at, setAt]);
 
   const refresh = useCallback(() => setVersion((v) => v + 1), []);
   const openTicket = useCallback((side: Side, sym?: string) => {
@@ -137,7 +142,7 @@ export default function App() {
       switch (e.key) {
         case "b": case "B": e.preventDefault(); openTicket("BUY"); break;
         case "s": case "S": e.preventDefault(); openTicket("SELL"); break;
-        case " ": e.preventDefault(); setPlaying((p) => !p); break;
+        case " ": e.preventDefault(); togglePlay(); break;
         case "ArrowRight": e.preventDefault(); setPlaying(false); setAt(nextTs(at)); break;
         case "ArrowLeft": e.preventDefault(); setPlaying(false); setAt(prevTs(at)); break;
         case "ArrowDown": e.preventDefault(); setSymbol(symbols[(i + 1) % symbols.length]); break;
@@ -152,7 +157,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [meta, symbol, at, dialog, nextTs, prevTs, setAt, openTicket]);
+  }, [meta, symbol, at, dialog, nextTs, prevTs, setAt, openTicket, togglePlay]);
 
   const quote = useMemo(() => market?.quotes.find((q) => q.symbol === symbol) ?? null, [market, symbol]);
   const holding = portfolio?.holdings.find((h) => h.symbol === symbol) ?? null;
@@ -176,8 +181,8 @@ export default function App() {
     <div className="flex min-h-full flex-col lg:h-full">
       <TopBar
         at={at} meta={meta} status={market.status} portfolio={portfolio}
-        playing={playing} speed={speed}
-        onTogglePlay={() => setPlaying((p) => !p)}
+        playing={playing} speed={speed} finished={finished}
+        onTogglePlay={togglePlay}
         onStep={(dir) => { setPlaying(false); setAt(dir > 0 ? nextTs(at) : prevTs(at)); }}
         onSpeed={setSpeed}
         onSeek={(ts) => { setPlaying(false); setAt(ts); }}
