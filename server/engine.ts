@@ -105,7 +105,8 @@ export class Engine {
   /** Replays the trade ledger up to `at` using the weighted average cost method. */
   private ledger(at: number): Ledger {
     const startingCash = this.account().starting_cash;
-    const day = this.market.status(at).tradingDay ?? epochToIst(at).date;
+    // "Today" is the session the quotes come from, so before the open or on a holiday it is the last one traded.
+    const day = epochToIst(this.market.timeline.findLast((ts) => ts <= at) ?? at).date;
     const led: Ledger = { cash: startingCash, positions: new Map(), realized: 0, charges: 0, realizedByTrade: new Map() };
     for (const t of this.trades(at)) {
       const gross = t.qty * t.price;
@@ -446,8 +447,10 @@ export class Engine {
     let ti = 0;
     let peak = startingCash;
     let maxDrawdown = 0;
-    const curve = points.map((ts) => {
-      for (; ti < trades.length && trades[ti].sim_time <= ts; ti++) {
+    const curve = points.map((ts, i) => {
+      // The last point also counts trades placed after its candle started, so it matches the portfolio at `at`.
+      const upTo = i === points.length - 1 ? at : ts;
+      for (; ti < trades.length && trades[ti].sim_time <= upTo; ti++) {
         const t = trades[ti];
         const gross = t.qty * t.price;
         cash += t.side === "BUY" ? -(gross + t.charges) : gross - t.charges;
