@@ -50,7 +50,7 @@ npm start          # http://localhost:3001
 Other scripts:
 
 ```bash
-npm test               # 67 tests: data, pricing, trading rules, P&L invariants, limit fills, charges, clock edges, API validation
+npm test               # 103 tests: data, pricing, trading rules, P&L invariants, limit fills, charges, back-dated orders, clock edges, API validation
 npm run typecheck
 npm run generate-data  # rebuilds the CSVs in data/ (same seed, same output)
 ```
