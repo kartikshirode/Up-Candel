@@ -5,9 +5,8 @@ import { computeCharges } from "../shared/charges.ts";
 import { openDatabase } from "../server/db.ts";
 import { Engine, TradeError } from "../server/engine.ts";
 import { Market } from "../server/market.ts";
-import { CANDLE_STARTS, epochToIst, istToEpoch, roundToTick } from "../shared/market.ts";
-
-const t = (date: string, time: string) => istToEpoch(`2026-09-${date}`, time);
+import { CANDLE_STARTS, epochToIst, roundToTick } from "../shared/market.ts";
+import { HOLIDAYS, ist, t, WEEKENDS } from "./helpers.ts";
 
 let engine: Engine;
 let market: Market;
@@ -34,7 +33,7 @@ describe("market data", () => {
   it("has 10 stocks, 14 trading days and 13 candles a day from 09:15 to 15:15", () => {
     expect(market.stocks).toHaveLength(10);
     expect(market.tradingDays).toHaveLength(14);
-    expect(market.tradingDays).not.toContain("2026-09-14"); // Ganesh Chaturthi
+    expect(market.tradingDays).not.toContain("2026-10-02"); // Gandhi Jayanti
     for (const s of market.stocks) {
       const list = market.candlesOf(s.symbol);
       expect(list).toHaveLength(14 * 13);
@@ -58,38 +57,39 @@ describe("market data", () => {
   });
 
   it("quotes the candle for the selected date and time", () => {
-    // TCS.csv: 2026-09-01T10:15 closes at 2076.10
-    expect(market.priceAt("TCS", t("01", "10:15"))).toBe(207610);
+    // TCS.csv row 2026-09-15T10:15 closes at 2076.10
+    expect(market.priceAt("TCS", t(0, "10:15"))).toBe(207610);
     // Between candles the latest started candle counts
-    expect(market.priceAt("TCS", t("01", "10:40"))).toBe(207610);
-    // Before the data starts, the last close before the window
-    expect(market.priceAt("TCS", t("01", "09:00"))).toBe(211000);
+    expect(market.priceAt("TCS", t(0, "10:40"))).toBe(207610);
+    // Before the data starts, the previous close from data/stocks.csv (TCS 2110.00)
+    expect(market.priceAt("TCS", t(0, "09:00"))).toBe(211000);
   });
 
   it("knows when the market is open", () => {
-    expect(market.status(t("02", "11:00")).isOpen).toBe(true);
-    expect(market.status(t("02", "15:30")).state).toBe("CLOSED");
-    expect(market.status(t("02", "09:00")).state).toBe("PRE_OPEN");
-    expect(market.status(t("05", "11:00")).label).toMatch(/Weekend/);
-    expect(market.status(t("14", "11:00")).label).toMatch(/holiday/);
+    expect(market.status(t(1, "11:00")).isOpen).toBe(true);
+    expect(market.status(t(1, "15:30")).state).toBe("CLOSED");
+    expect(market.status(t(1, "09:00")).state).toBe("PRE_OPEN");
+    expect(market.status(ist(WEEKENDS[0], "11:00")).label).toMatch(/Weekend/);
+    expect(market.status(ist(HOLIDAYS[0], "11:00")).label).toMatch(/holiday/);
   });
 });
 
 describe("trading", () => {
   it("buys at the price for the selected time and debits cash", () => {
-    const at = t("01", "10:15");
+    const at = t(0, "10:15");
+    const price = market.priceAt("TCS", at); // TCS.csv row 2026-09-15T10:15
     const order = engine.placeOrder({ symbol: "TCS", side: "BUY", type: "MARKET", qty: 10, at });
     expect(order.status).toBe("FILLED");
-    expect(order.fillPrice).toBe(207610);
+    expect(order.fillPrice).toBe(price);
     const p = engine.portfolio(at);
-    expect(p.summary.cash).toBe(10_00_000_00 - 10 * 207610);
-    expect(p.holdings[0]).toMatchObject({ symbol: "TCS", qty: 10, avgPrice: 207610 });
+    expect(p.summary.cash).toBe(10_00_000_00 - 10 * price);
+    expect(p.holdings[0]).toMatchObject({ symbol: "TCS", qty: 10, avgPrice: price });
   });
 
   it("averages cost across buys and books realized P&L on a partial sell", () => {
-    const a = t("01", "10:15");
-    const b = t("03", "11:15");
-    const c = t("08", "14:15");
+    const a = t(0, "10:15");
+    const b = t(2, "11:15");
+    const c = t(5, "14:15");
     engine.placeOrder({ symbol: "INFY", side: "BUY", type: "MARKET", qty: 10, at: a });
     engine.placeOrder({ symbol: "INFY", side: "BUY", type: "MARKET", qty: 30, at: b });
     const pa = market.priceAt("INFY", a);
@@ -107,41 +107,41 @@ describe("trading", () => {
 
   it("keeps total P&L equal to realized + unrealized - charges", () => {
     engine.setChargesEnabled(true);
-    engine.placeOrder({ symbol: "SBIN", side: "BUY", type: "MARKET", qty: 100, at: t("02", "09:45") });
-    engine.placeOrder({ symbol: "LT", side: "BUY", type: "MARKET", qty: 20, at: t("04", "13:15") });
-    engine.placeOrder({ symbol: "SBIN", side: "SELL", type: "MARKET", qty: 40, at: t("17", "10:15") });
-    const s = engine.portfolio(t("18", "15:15")).summary;
+    engine.placeOrder({ symbol: "SBIN", side: "BUY", type: "MARKET", qty: 100, at: t(1, "09:45") });
+    engine.placeOrder({ symbol: "LT", side: "BUY", type: "MARKET", qty: 20, at: t(3, "13:15") });
+    engine.placeOrder({ symbol: "SBIN", side: "SELL", type: "MARKET", qty: 40, at: t(11, "10:15") });
+    const s = engine.portfolio(t(12, "15:15")).summary;
     expect(s.totalPnl).toBe(s.realizedPnl + s.unrealizedPnl - s.charges);
     expect(s.charges).toBeGreaterThan(0);
   });
 
   it("rejects orders it cannot honour", () => {
-    const at = t("02", "11:15");
+    const at = t(1, "11:15");
     expectTradeError(() => engine.placeOrder({ symbol: "LT", side: "BUY", type: "MARKET", qty: 10_000, at }), "INSUFFICIENT_FUNDS");
     expectTradeError(() => engine.placeOrder({ symbol: "ITC", side: "SELL", type: "MARKET", qty: 1, at }), "INSUFFICIENT_HOLDINGS");
     engine.placeOrder({ symbol: "ITC", side: "BUY", type: "MARKET", qty: 5, at });
     expectTradeError(() => engine.placeOrder({ symbol: "ITC", side: "SELL", type: "MARKET", qty: 6, at }), "INSUFFICIENT_HOLDINGS");
-    expectTradeError(() => engine.placeOrder({ symbol: "ITC", side: "BUY", type: "MARKET", qty: 1, at: t("02", "16:00") }), "MARKET_CLOSED");
-    expectTradeError(() => engine.placeOrder({ symbol: "ITC", side: "BUY", type: "MARKET", qty: 1, at: t("05", "11:00") }), "MARKET_CLOSED");
+    expectTradeError(() => engine.placeOrder({ symbol: "ITC", side: "BUY", type: "MARKET", qty: 1, at: t(1, "16:00") }), "MARKET_CLOSED");
+    expectTradeError(() => engine.placeOrder({ symbol: "ITC", side: "BUY", type: "MARKET", qty: 1, at: ist(WEEKENDS[0], "11:00") }), "MARKET_CLOSED");
     expectTradeError(() => engine.placeOrder({ symbol: "NOPE", side: "BUY", type: "MARKET", qty: 1, at }), "UNKNOWN_SYMBOL");
   });
 
   it("only lets trading move forward in time", () => {
-    engine.placeOrder({ symbol: "TCS", side: "BUY", type: "MARKET", qty: 1, at: t("08", "10:15") });
-    expectTradeError(() => engine.placeOrder({ symbol: "TCS", side: "BUY", type: "MARKET", qty: 1, at: t("03", "10:15") }), "TIME_TRAVEL");
+    engine.placeOrder({ symbol: "TCS", side: "BUY", type: "MARKET", qty: 1, at: t(5, "10:15") });
+    expectTradeError(() => engine.placeOrder({ symbol: "TCS", side: "BUY", type: "MARKET", qty: 1, at: t(2, "10:15") }), "TIME_TRAVEL");
   });
 
   it("shows the account as it was at an earlier time", () => {
-    engine.placeOrder({ symbol: "TCS", side: "BUY", type: "MARKET", qty: 5, at: t("08", "10:15") });
-    expect(engine.portfolio(t("03", "10:15")).holdings).toHaveLength(0);
-    expect(engine.tradeHistory(t("03", "10:15"))).toHaveLength(0);
-    expect(engine.portfolio(t("09", "10:15")).holdings).toHaveLength(1);
+    engine.placeOrder({ symbol: "TCS", side: "BUY", type: "MARKET", qty: 5, at: t(5, "10:15") });
+    expect(engine.portfolio(t(2, "10:15")).holdings).toHaveLength(0);
+    expect(engine.tradeHistory(t(2, "10:15"))).toHaveLength(0);
+    expect(engine.portfolio(t(6, "10:15")).holdings).toHaveLength(1);
   });
 });
 
 describe("limit orders", () => {
   it("rests below the market and fills when a later candle touches the limit", () => {
-    const at = t("01", "10:15");
+    const at = t(0, "10:15");
     const list = market.candlesOf("TCS");
     const start = market.indexAt("TCS", at);
     // Pick a limit that a later candle trades through, but below the current price.
@@ -159,7 +159,7 @@ describe("limit orders", () => {
   });
 
   it("fills a marketable limit straight away at the market price", () => {
-    const at = t("01", "10:15");
+    const at = t(0, "10:15");
     const ltp = market.priceAt("ITC", at);
     const order = engine.placeOrder({ symbol: "ITC", side: "BUY", type: "LIMIT", qty: 10, limitPrice: roundToTick(ltp * 1.02), at });
     expect(order.status).toBe("FILLED");
@@ -167,17 +167,17 @@ describe("limit orders", () => {
   });
 
   it("rejects prices off the tick grid or outside the band", () => {
-    const at = t("01", "10:15");
+    const at = t(0, "10:15");
     expectTradeError(() => engine.placeOrder({ symbol: "TCS", side: "BUY", type: "LIMIT", qty: 1, limitPrice: 200003, at }), "BAD_TICK");
     expectTradeError(() => engine.placeOrder({ symbol: "TCS", side: "BUY", type: "LIMIT", qty: 1, limitPrice: 150000, at }), "PRICE_BAND");
   });
 
   it("can be cancelled while open", () => {
-    const at = t("01", "10:15");
+    const at = t(0, "10:15");
     const limit = roundToTick(market.priceAt("TCS", at) * 0.92, "up");
     const order = engine.placeOrder({ symbol: "TCS", side: "BUY", type: "LIMIT", qty: 1, limitPrice: limit, at });
-    expect(engine.cancelOrder(order.id, t("01", "11:15")).status).toBe("CANCELLED");
-    expect(engine.portfolio(t("01", "11:15")).summary.blockedForOrders).toBe(0);
+    expect(engine.cancelOrder(order.id, t(0, "11:15")).status).toBe("CANCELLED");
+    expect(engine.portfolio(t(0, "11:15")).summary.blockedForOrders).toBe(0);
   });
 });
 
@@ -191,7 +191,7 @@ describe("charges", () => {
 
 describe("performance", () => {
   it("tracks net worth against an equal-weight benchmark from the same starting cash", () => {
-    const perf = engine.performance(t("21", "15:15"));
+    const perf = engine.performance(t(-1, "15:15"));
     expect(perf.curve).toHaveLength(14 * 13);
     expect(perf.curve.every((p) => p.netWorth === 10_00_000_00)).toBe(true); // no trades, cash only
     expect(Math.abs(perf.curve[0].benchmark - 10_00_000_00)).toBeLessThan(2_000_000);
@@ -201,7 +201,7 @@ describe("performance", () => {
 describe("HTTP API", () => {
   it("places an order and returns JSON errors with a code", async () => {
     const app = createApp(engine);
-    const at = t("02", "11:15");
+    const at = t(1, "11:15");
     const ok = await request(app).post("/api/orders").send({ symbol: "reliance", side: "BUY", qty: 3, at });
     expect(ok.status).toBe(201);
     expect(ok.body.status).toBe("FILLED");
@@ -220,9 +220,10 @@ describe("HTTP API", () => {
 
   it("serves market quotes for a selected time", async () => {
     const app = createApp(engine);
-    const res = await request(app).get(`/api/market?at=${t("01", "10:15")}`);
+    const res = await request(app).get(`/api/market?at=${t(0, "10:15")}`);
     expect(res.status).toBe(200);
     expect(res.body.status.isOpen).toBe(true);
+    // TCS.csv row 2026-09-15T10:15 closes at 2076.10
     expect(res.body.quotes.find((q: { symbol: string }) => q.symbol === "TCS").ltp).toBe(207610);
   });
 });
