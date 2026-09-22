@@ -19,7 +19,8 @@ interface Props {
   onOpenAccount: () => void;
 }
 
-const btn = "grid h-8 w-8 place-items-center rounded-[2px] border border-line bg-raised text-text hover:border-muted disabled:opacity-40";
+// inline-flex, not grid: the play button holds an icon and a word side by side.
+const btn = "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[2px] border border-line bg-raised text-text hover:border-muted disabled:opacity-40";
 
 export function TopBar(p: Props) {
   const s = p.portfolio.summary;
