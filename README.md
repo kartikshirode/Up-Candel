@@ -96,9 +96,9 @@ On startup the server loads the CSVs into SQLite (the `stocks` and `candles` tab
 
 Real brokers and the tax department use FIFO lot matching instead of a running average. For a paper-trading app I think average cost is easier to read, but it's worth knowing the difference.
 
-**Moving through time.** This part needed a rule, since the brief asks for prices at any selected time and you can also trade.
+**Moving through time.** This part needed rules, since the brief asks for prices at any selected time and you can also trade at that time.
 - Everything you see is *as of* the clock. Jump back to 17 Sep after trading on 1 Oct and the holdings, cash and history show exactly what you had on the 17th. Later trades show as faded dots on the tape.
-- Trading only moves forward. You can't place an order earlier than the latest activity on your ledger, otherwise you could sell on day 3 shares you'd already sold on day 8. The ticket explains this and offers a jump back to your latest trade. Reset the account if you want to start over.
+- You can trade at any open market time, including before trades you have already made. Before accepting a back-dated order the engine replays the whole ledger in time order, and refuses it only if one of your later trades would end up short of cash or shares. So selling 100 shares on 1 Oct and then going back to 17 Sep to sell the same 100 is refused, and the message names the trade it clashes with.
 - Looking ahead is free. If you have a limit order waiting and scrub past the moment it would fill, you'll see it filled, but nothing is saved until you actually trade at or after that time. So you can peek at 1 Oct and still come back and trade on 17 Sep.
 
 ## API

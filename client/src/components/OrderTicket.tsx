@@ -64,15 +64,13 @@ export function OrderTicket(p: Props) {
   const total = side === "BUY" ? value + (charges?.total ?? 0) : value - (charges?.total ?? 0);
   const maxBuy = Math.max(0, Math.floor(s.availableCash / (px * (p.portfolio.account.chargesEnabled ? 1.0012 : 1))));
 
-  const pastLedger = p.latestActivity !== null && p.at < p.latestActivity;
+  const backInTime = p.latestActivity !== null && p.at < p.latestActivity;
   const nextOpen = p.timeline.find((ts) => ts > p.at);
 
-  let blocker: { text: string; action?: { label: string; ts: number } } | null = null;
-  if (!p.status.isOpen) {
-    blocker = { text: `${p.status.label}. Orders are accepted 09:15 to 15:30 on trading days.`, action: nextOpen ? { label: `Go to ${when(nextOpen)}`, ts: nextOpen } : undefined };
-  } else if (pastLedger) {
-    blocker = { text: `Your ledger already has activity at ${when(p.latestActivity!)}. Trading only moves forward, so you can look back but not trade back.`, action: { label: `Jump to ${when(p.latestActivity!)}`, ts: p.latestActivity! } };
-  }
+  const blocker = p.status.isOpen ? null : {
+    text: `${p.status.label}. Orders are accepted 09:15 to 15:30 on trading days.`,
+    action: nextOpen ? { label: `Go to ${when(nextOpen)}`, ts: nextOpen } : undefined,
+  };
 
   let problem: string | null = null;
   if (!qtyValid) problem = "Enter a whole number of shares.";
@@ -221,6 +219,11 @@ export function OrderTicket(p: Props) {
           </div>
         ) : (
           <>
+            {backInTime && (
+              <p className="text-[11.5px] leading-snug text-muted">
+                You are trading before your later trades, which stay as they are. The order is refused only if it would leave one of them short of cash or shares.
+              </p>
+            )}
             {problem && <p className="text-[12px] text-down" role="alert">{problem}</p>}
             <button
               type="submit"

@@ -60,7 +60,7 @@ export function Watchlist({ quotes, selected, holdings, onSelect, onTrade }: Pro
         })}
       </ul>
       <p className="border-t border-line px-3 py-2 text-[11px] leading-snug text-faint">
-        Change is against the previous session's close. ↑ ↓ to move, B or S to trade.
+        <span className="text-muted">Simulated prices, not real NSE data.</span> Change is against the previous session's close. ↑ ↓ to move, B or S to trade.
       </p>
     </aside>
   );
