@@ -17,17 +17,18 @@ import { CANDLE_STARTS, epochToIsoIst, istToEpoch, roundToTick } from "../shared
 const SEED = 20260901;
 const OUT_DIR = join(import.meta.dirname, "..", "data");
 
-// 1-21 Sep 2026. Weekends are skipped, and so is Mon 14 Sep (Ganesh Chaturthi, NSE holiday).
-// Fri 4 Sep (Janmashtami) is a trading day in 2026.
-const HOLIDAYS = new Set(["2026-09-14"]);
-const FIRST_DAY = "2026-09-01";
-const LAST_DAY = "2026-09-21";
+// Starts 14 Sep 2026 and runs for the next 14 trading days, which ends on 5 Oct.
+// Weekends are skipped, and so are the two NSE holidays inside that stretch:
+// Mon 14 Sep (Ganesh Chaturthi) and Fri 2 Oct (Gandhi Jayanti).
+const HOLIDAYS = new Set(["2026-09-14", "2026-10-02"]);
+const FIRST_DAY = "2026-09-14";
+const TRADING_DAYS = 14;
 
 interface StockSpec {
   symbol: string;
   name: string;
   sector: string;
-  prevClose: number; // INR, close on Mon 31 Aug 2026 (approximate real level)
+  prevClose: number; // INR, close on the session before the data starts (approximate real level)
   dailyVol: number; // daily sigma of log returns
   driftPerDay: number; // mean daily log return, gives each stock a personality
   adv: number; // average daily volume, shares
@@ -49,9 +50,9 @@ const STOCKS: StockSpec[] = [
 // Scripted news days: an extra overnight gap on one stock. These give the replay a few
 // moments worth trading around, and the README lists them.
 const EVENTS: Record<string, Record<string, number>> = {
-  "2026-09-08": { BHARTIARTL: 0.028 }, // tariff hike chatter
-  "2026-09-10": { TCS: -0.034, INFY: -0.018 }, // weak IT guidance from a US peer
-  "2026-09-17": { SBIN: 0.024 }, // PSU bank rerating
+  "2026-09-18": { BHARTIARTL: 0.028 }, // tariff hike chatter
+  "2026-09-22": { TCS: -0.034, INFY: -0.018 }, // weak IT guidance from a US peer
+  "2026-09-30": { SBIN: 0.024 }, // PSU bank rerating
 };
 
 // Relative volatility and volume through the session, one weight per candle.
@@ -86,11 +87,11 @@ function normal(): number {
 function tradingDays(): string[] {
   const days: string[] = [];
   const d = new Date(`${FIRST_DAY}T00:00:00Z`);
-  const end = new Date(`${LAST_DAY}T00:00:00Z`);
-  for (; d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+  while (days.length < TRADING_DAYS) {
     const iso = d.toISOString().slice(0, 10);
     const wd = d.getUTCDay();
     if (wd !== 0 && wd !== 6 && !HOLIDAYS.has(iso)) days.push(iso);
+    d.setUTCDate(d.getUTCDate() + 1);
   }
   return days;
 }
